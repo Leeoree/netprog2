@@ -5,11 +5,14 @@
 #include <errno.h>
 #include <limits.h>
 
+
 int main(int argc, char *argv[])
 {
-	int result;
+	int result, subresult, flag, just_beginning;
+	char sample[255], alltogether[255], *div;
 
-	while (1) {
+	while (1)
+	{
 		/*
 		 * Программа читает одну строку из стандартного потока ввода
 		 * (stdin), разбивает строку на арифметические операторы и
@@ -22,15 +25,40 @@ int main(int argc, char *argv[])
 		 * strcmp(), strncmp() - сравнение строк,
 		 * atoi(), strtol() - преобразование строки в целое число.
 		 */
-
-		/* ... */
-
-
-		/* Дополнительная поддержка оператора '*' с соблюдением
-		 * приоритета операторов.
-		 */
-
-		/* ... УСЛОЖНЕННАЯ ЗАДАЧА ... */
+		just_beginning = 1;
+		flag = 0;
+		result = 0;
+		subresult = 0;
+		gets(sample);
+		strcpy(alltogether, sample);
+		div = strtok(alltogether, " ");
+		while (div != 0)
+		{
+			strcpy(alltogether, div);
+			if (isdigit(alltogether[0]))
+			{
+				if (flag)
+					subresult *= atoi(alltogether);
+				else
+				{
+					if (just_beginning)
+						just_beginning = 0;
+					else
+						result += subresult;
+					subresult = atoi(alltogether);
+				}
+			}
+			else
+			{
+				if (alltogether[0] == '*')
+					flag = 1;
+				else
+					flag = 0;
+			}
+			div = strtok(NULL, " ");
+		}
+		result += subresult;
+		printf("Result: %d\n", result);
 	}
 
 	printf("Result: %d\n", result);
