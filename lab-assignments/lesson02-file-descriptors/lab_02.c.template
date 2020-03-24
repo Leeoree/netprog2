@@ -121,8 +121,6 @@ static int run_echo(const char *file_name, const char *echo_data)
 			pointer = strchr(echo_data, '\b');
 		}
 
-		printf("%d\n", countN);
-
 		if (countN == 0 && countB == 0)
 			fwrite(echo_data, sizeof(char), strlen(echo_data), fp);
 		else {
