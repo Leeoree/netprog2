@@ -20,10 +20,43 @@
  */
 static bool match_pattern(const char *filename, const char *pattern)
 {
-
-	/* ... УСЛОЖНЕННАЯ ЗАДАЧА ... */
-
-	return true;
+	char *pointer, *pointer2, *star, *second_part[BUF_SIZE], buf[BUF_SIZE];
+	star = strchr(pattern, '*');
+	if (star == NULL) {
+		if (strcmp(filename, pattern) == 0)
+			return true;
+		else
+			return false;
+	}
+	if (star == pattern) {
+		memmove(buf, pattern[1], strlen(pattern) - 1);
+		buf[strlen(pattern) - 1] = '\0';
+		pointer = strstr(filename, buf);
+		if (pointer - filename == strlen(filename) - strlen(pattern))
+			return true;
+		else
+			return false;
+	}
+	if (star == pattern + strlen(pattern) - 1) {
+		memmove(buf, pattern, strlen(pattern) - 1);
+		buf[strlen(pattern) - 1] = '\0';
+		pointer = strstr(filename, buf);
+		if (pointer == filename)
+			return true;
+		else
+			return false;
+	}
+	else {
+		memmove(second_part, star + 1, strlen(pattern) - (star - pattern));
+		memmove(buf, pattern, star - pattern);
+		buf[star - pattern] = '\0';
+		pointer = strstr(filename, buf);
+		pointer2 = strstr(filename, second_part);
+		if (pointer == filename && (pointer - filename == strlen(filename) - strlen(pattern)))
+			return true;
+		else
+			return false;
+	}
 }
 
 /*
@@ -37,8 +70,22 @@ static int run_ls(const char *pattern)
 	DIR *dir;
 	struct dirent *entry;
 
-	/* ... УСЛОЖНЕННАЯ ЗАДАЧА ... */
-
+	printf("Executing 'ls' of pattern %s\n", pattern);
+	dir = opendir("/home/root/share/netprog2-master/lab-assignments/lesson02-file-descriptors");
+	if (dir != NULL) {
+		entry = readdir(dir);
+		while (entry != NULL) {
+			if (match_pattern(entry->d_name, pattern))
+				printf("%s\n", entry->d_name);
+			entry = readdir(dir);
+		}
+	}
+	else {
+		printf("Ошибка при открытии директории\n");
+		closedir(dir);
+		return -1;
+	}
+	closedir(dir);
 	return 0;
 }
 
@@ -51,9 +98,63 @@ static int run_ls(const char *pattern)
  */
 static int run_echo(const char *file_name, const char *echo_data)
 {
+	int countN = 0, countB = 0, N[BUF_SIZE], B[BUF_SIZE];
+	char buff[BUF_SIZE], *pointer;
+	FILE *fp;
 
-	/* ... */
+	printf("Executing 'echo' into file %s\n", file_name);
+	fp = fopen(file_name, "w");
+	if (fp != NULL)	{
+		printf("File was successefully opened\n");
 
+		pointer = strchr(echo_data, '\n');
+		while (pointer != NULL) {
+			N[countN] = pointer - echo_data + 1;
+			countN += 1;
+			pointer = strchr(echo_data, '\n');
+		}
+
+		pointer = strchr(echo_data, '\b');
+		while (pointer != NULL) {
+			N[countN] = pointer - echo_data + 1;
+			countN += 1;
+			pointer = strchr(echo_data, '\b');
+		}
+
+		printf("%d\n", countN);
+
+		if (countN == 0 && countB == 0)
+			fwrite(echo_data, sizeof(char), strlen(echo_data), fp);
+		else {
+			for (int i = 0; i < countB; i++) {
+				memmove(echo_data[B[i] - 1], echo_data[B[i]], strlen(echo_data) - B[i] + 1);
+				for (int j = 0; j < countN; j++) {
+					if (N[j] > B[i])
+						N[j] -= 1;
+				}
+			}
+			pointer = echo_data;
+			for (int i = 0; i < countN; i++) {
+				if (i == 0)
+					fwrite(pointer, sizeof(char), N[i] - 1, fp);
+				else
+					fwrite(pointer, sizeof(char), N[i] - N[i-1] - 1, fp);
+				fwrite("\n", sizeof(char), 1, fp);
+				if (N[i] != strlen(echo_data))
+					pointer += N[i];
+				else
+					pointer = NULL;
+			}
+			if (pointer != NULL)
+				fwrite(pointer, sizeof(char), strlen(echo_data) - N[countN - 1], fp);
+		}
+	}
+	else {
+		printf("Ошибка при открытии файла на запись\n");
+		fclose(fp);
+		return -1;
+	}
+	fclose(fp);
 	return 0;
 }
 
@@ -63,9 +164,23 @@ static int run_echo(const char *file_name, const char *echo_data)
  */
 static int run_cat(const char *file_name)
 {
+	char buff[255];
+	FILE *fp;
 
-	/* ... */
-
+	printf("Executing 'cat' from file %s\n", file_name);
+	fp = fopen(file_name, "r");
+	if (fp != NULL) {
+		printf("File was successefully opened\n");
+		fread(buff, sizeof(char), 255, fp);
+		printf(buff);
+		printf("\n");
+		fclose(fp);
+	}
+	else {
+		printf("Ошибка при открытии файла на запись\n");
+		fclose(fp);
+		return -1;
+	}
 	return 0;
 }
 
@@ -89,10 +204,6 @@ static int parse_command(const char *command)
 	char cmd_data[BUF_SIZE], file_name[BUF_SIZE];
 	int ret;
 
-	ret = sscanf(command, "touch %s", file_name);
-	if (ret == 1)
-		return run_touch(file_name);
-
 	/*
 	 * Фрагмент кода производит анализ строки для следующих команд:
 	 * echo <value> > <file_name>
@@ -100,9 +211,23 @@ static int parse_command(const char *command)
 	 * ls <pattern>
 	 */
 
-	/* ... */
+	ret = sscanf(command, "touch %s", file_name);
+	if (ret == 1)
+		return run_touch(file_name);
 
+	ret = sscanf(command, "echo %s > %s", cmd_data, file_name);
+	if (ret == 2)
+		return run_echo(file_name, cmd_data);
+
+	ret = sscanf(command, "cat < %s", file_name);
+	if (ret == 1)
+		return run_cat(file_name);
+
+	ret = sscanf(command, "ls %s", cmd_data);
+	if (ret == 1)
+		return run_ls(cmd_data);
 	fprintf(stderr, "Unknown command '%s'\n", command);
+
 	return 0;
 }
 
